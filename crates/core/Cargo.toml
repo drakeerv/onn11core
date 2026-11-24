@@ -1,0 +1,29 @@
+[package]
+name = "onn11core-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+vendored-libusb = ["rusb/vendored"]
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+sha1 = "0.10"
+md-5 = "0.10"
+flate2 = "1"
+xz2 = { version = "0.1", features = ["static"] }
+sevenz-rust = "0.6"
+ureq = "2"
+regex = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+fs2 = "0.4"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rusb = "0.9"
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+rusb = { version = "0.9", features = ["vendored"] }
