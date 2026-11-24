@@ -25,7 +25,8 @@ recovery path. The unlock is irreversible in practice and wipes userdata.
 
 ## Quick start
 
-Download the latest release and run:
+Download the latest release from
+https://github.com/drakeerv/onn11core/releases/latest and run:
 
 ```sh
 onn11core check
