@@ -86,7 +86,7 @@ release includes a prebuilt boot image.
 
 ## Credits
 
-- **drakeerv**: [GitHub](https://github.com/drakeerv), [Nura Wiki](https://wiki.nura.eco/wiki/Onn_11_Core_Tablet_%28onn-t405a%29) - unlock exploit, device work, stock dump.
+- **drakeerv**: [GitHub](https://github.com/drakeerv), [Nura Wiki](https://wiki.nura.eco/wiki/Onn_11_Core_Tablet_%28onn-t405a%29) - unlock exploit, device work, stock dump, Tinno source code from Walmart.
 - **SelfhostedPro**: [GitHub](https://github.com/SelfhostedPro), [t405a-gsi](https://github.com/SelfhostedPro/t405a-gsi) - MIT licensed core flashing logic.
 - **el-vertedero**: [onn_onn11core_dump](https://github.com/el-vertedero/onn_onn11core_dump) - hosting my stock dump.
 - **TrebleDroid**: [treble_experimentations](https://github.com/TrebleDroid/treble_experimentations) - DSU userdebug GSI used by the stock backup.

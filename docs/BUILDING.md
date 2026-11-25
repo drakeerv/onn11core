@@ -43,7 +43,8 @@ The GKI kernel is not needed for the main install. The stock kernel and stock
 vendor modules remain the safe default.
 
 The public kernel source is at https://github.com/onn-oss/kernel-6.12 on the
-device branch. The release boot image was built from the AOSP GKI
+device branch. drakeerv obtained the Tinno source code from Walmart and
+published it there. The release boot image was built from the AOSP GKI
 `android16-6.12` source plus the device module tree, using the build notes and
 patches from the onn-clean kernel pipeline.
 

@@ -64,7 +64,7 @@ jobs:
         env:
           CC_x86_64_unknown_linux_musl: musl-gcc
           AR_x86_64_unknown_linux_musl: ar
-          CFLAGS_x86_64_unknown_linux_musl: -idirafter /usr/include
+          CFLAGS_x86_64_unknown_linux_musl: -idirafter /usr/include -idirafter /usr/include/x86_64-linux-gnu
           CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
           PKG_CONFIG_LIBDIR: /tmp/empty-pkgconfig
           PKG_CONFIG_PATH: /tmp/empty-pkgconfig
