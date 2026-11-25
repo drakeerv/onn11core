@@ -98,10 +98,11 @@ fastboot reboot recovery
 In Recovery choose Factory data reset. This initializes metadata encryption.
 Without it the next boot can fail with `init_user0_failed`.
 
-## 7. Optional GKI kernel
+## 7. GKI kernel (recommended)
 
-The stock kernel is the safe default. To flash the GKI boot image from the
-release:
+The Google GKI kernel includes the GhostLock fix and other security backports
+from the newer GKI branch. The stock kernel is only a fallback. The stock vendor
+modules stay in place. To flash the GKI boot image from the release:
 
 1. Unplug the tablet.
 2. Start the command, then plug the tablet back in.

@@ -2,7 +2,7 @@
 
 A small command line installer for the onn 11" Core (2026) tablet. It unlocks
 the bootloader, backs up the stock partitions, and installs LineageOS. It also
-handles the optional GKI kernel and a stock restore.
+handles the recommended GKI kernel and a stock restore.
 
 This is a stopgap until the official LineageOS port. It is not a full ROM.
 
@@ -44,19 +44,30 @@ The one-shot path is:
 onn11core all --variant microg
 ```
 
+This flashes the recommended GKI kernel by default. Add `--stock-kernel` to keep
+the older stock kernel.
+
 Use `--variant vanilla` for LineageOS without microG. The GApps GSI is also
 available with `--variant gapps`.
 
 After the flash, use Recovery and choose Factory data reset. This step is
 required on this tablet.
 
-If you want the GKI kernel after the GSI boots:
+The Google GKI kernel is recommended. It includes the GhostLock fix and other
+security backports from the newer GKI branch. The `all` command flashes it. If
+you use the step-by-step commands, run this after the GSI boots:
 
 ```sh
 onn11core gki
 ```
 
-This is optional. The stock kernel remains the safe default.
+The stock kernel is only a fallback. The stock vendor modules stay in place
+either way.
+
+## Vendor modules
+
+Vendor modules stay stock. The stopgap does not package the source-built vendor
+modules. They are build artifacts for the official LineageOS port.
 
 ## Manual method
 
@@ -81,7 +92,7 @@ The tool is Rust. See [docs/BUILDING.md](docs/BUILDING.md).
 cargo build --release
 ```
 
-The optional GKI kernel is built from the public onn-oss kernel source. The
+The GKI kernel is built from the public onn-oss kernel source. The
 release includes a prebuilt boot image.
 
 ## Credits

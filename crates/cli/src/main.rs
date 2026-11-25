@@ -83,7 +83,7 @@ enum Cmd {
         #[arg(long, value_parser = ["vanilla", "microg", "gapps"], default_value = "vanilla")]
         variant: String,
         #[arg(long)]
-        gki: bool,
+        stock_kernel: bool,
         #[arg(long)]
         yes: bool,
     },
@@ -180,7 +180,7 @@ fn run() -> anyhow::Result<()> {
         }
         Cmd::All {
             variant: v,
-            gki,
+            stock_kernel,
             yes,
         } => {
             let variant = variant(&v)?;
@@ -194,7 +194,7 @@ fn run() -> anyhow::Result<()> {
             }
             let backup = core::backup::backup(&rep, &settings, None)?;
             core::flash::flash(&rep, &settings, &backup, None, variant, false, false)?;
-            if gki {
+            if !stock_kernel {
                 core::flash::flash_gki(&rep, &settings, None, false)?;
             }
         }

@@ -37,10 +37,10 @@ Run the tests:
 cargo test
 ```
 
-## Optional GKI kernel
+## GKI kernel
 
-The GKI kernel is not needed for the main install. The stock kernel and stock
-vendor modules remain the safe default.
+The GKI kernel is recommended. It includes the GhostLock fix and other security
+backports from the newer Google GKI branch. The stock kernel is only a fallback.
 
 The public kernel source is at https://github.com/onn-oss/kernel-6.12 on the
 device branch. drakeerv obtained the Tinno source code from Walmart and
@@ -57,7 +57,9 @@ At a high level:
 4. Package the raw Image as a header v4 boot image with an empty ramdisk.
 
 The device kernel source and module sources are on onn-oss. The stopgap does
-not install rebuilt vendor modules. It keeps the stock vendor partitions.
+not install rebuilt vendor modules. It keeps the stock vendor partitions. The
+source-built vendor modules are not packaged in the release; they are for the
+official LineageOS port.
 
 ## GSI
 
