@@ -35,8 +35,9 @@ onn11core backup
 ```
 
 Keep the backup directory. It contains `vbmeta_<slot>.img`, which the manual
-flash needs. The public stock dump can be used as a reference, but do not flash
-its `lk`, preloader, TEE or other boot chain files.
+flash needs. The stock dump linked from the README can be used as a reference.
+It is drakeerv's dump, hosted by el-vertedero. Do not flash its `lk`,
+preloader, TEE or other boot chain files.
 
 ## 3. Choose a slot
 

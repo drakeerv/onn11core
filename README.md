@@ -63,8 +63,8 @@ raw USB unlock and the stock backup.
 
 ## Stock dump
 
-The public stock dump is at
-https://github.com/el-vertedero/onn_onn11core_dump
+The stock dump is drakeerv's own dump, hosted at
+[el-vertedero/onn_onn11core_dump](https://github.com/el-vertedero/onn_onn11core_dump).
 
 It is a reference tree, not a flashable bundle. It includes boot chain files
 that must not be flashed. The tool takes its own stock backup with a DSU before
@@ -83,15 +83,13 @@ release includes a prebuilt boot image.
 
 ## Credits
 
-Unlock exploit and device work: drakeerv.
-
-Core flashing logic based on the MIT licensed t405a-gsi project by
-SelfhostedPro.
-
-Stock dump reference: el-vertedero.
-
-GSIs: MisterZtr LineageOS GSI and LineageOS for microG.
-
-Kernel source: onn-oss kernel-6.12.
+- **drakeerv**: [GitHub](https://github.com/drakeerv), [Nura Wiki](https://wiki.nura.eco/wiki/Onn_11_Core_Tablet_%28onn-t405a%29) - unlock exploit, device work, stock dump.
+- **SelfhostedPro**: [GitHub](https://github.com/SelfhostedPro), [t405a-gsi](https://github.com/SelfhostedPro/t405a-gsi) - MIT licensed core flashing logic.
+- **phildabill**: [onn-t405a-Bootloader-unlock](https://github.com/phildabill/onn-t405a-Bootloader-unlock) - unlock payload packaging reference.
+- **el-vertedero**: [onn_onn11core_dump](https://github.com/el-vertedero/onn_onn11core_dump) - hosting drakeerv's stock dump.
+- **TrebleDroid**: [treble_experimentations](https://github.com/TrebleDroid/treble_experimentations) - DSU userdebug GSI used by the stock backup.
+- **MisterZtr**: [LineageOS_gsi](https://github.com/MisterZtr/LineageOS_gsi) - vanilla LineageOS GSI.
+- **LineageOS for microG**: [SourceForge](https://sourceforge.net/projects/lineageos-4-microg/) - microG GSI.
+- **onn-oss**: [kernel-6.12](https://github.com/onn-oss/kernel-6.12) - device kernel source for the GKI build.
 
 License: MIT. See LICENSE.
