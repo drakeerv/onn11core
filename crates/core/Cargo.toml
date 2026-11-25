@@ -17,6 +17,7 @@ md-5 = "0.10"
 flate2 = "1"
 xz2 = { version = "0.1", features = ["static"] }
 sevenz-rust = "0.6"
+tar = "0.4"
 ureq = "2"
 regex = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }

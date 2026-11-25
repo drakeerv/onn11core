@@ -13,7 +13,7 @@ use crate::consts::{MAGISK, PLAY_INTEGRITY_FIX};
 use crate::download;
 use crate::proc;
 use crate::report::Reporter;
-use crate::{backup, device, Result, Settings};
+use crate::{device, Result, Settings};
 use std::collections::HashSet;
 use std::fs;
 use std::io::Read;
@@ -176,102 +176,49 @@ fn wait_for_new_patch(
 fn print_plan(rep: &dyn Reporter, backup: &Path, patched: Option<&Path>, slot: &str) {
     rep.log("dry run; would run:");
     rep.log("  adb install -r <workdir>/magisk/Magisk-v31.1.apk");
+    rep.log(&format!(
+        "  adb push {}/init_boot{slot}.img /sdcard/Download/init_boot{slot}.img",
+        backup.display()
+    ));
     let image = match patched {
-        Some(path) => {
-            rep.log(&format!(
-                "  # using the supplied patched image {}",
-                path.display()
-            ));
-            path.display().to_string()
-        }
+        Some(path) => path.display().to_string(),
         None => {
-            rep.log(&format!(
-                "  adb push {}/init_boot{slot}.img /sdcard/Download/init_boot{slot}.img",
-                backup.display()
-            ));
             rep.log("  # on the tablet: Magisk -> Install -> Patch firmware / image");
             rep.log("  #                -> Select from storage -> Download/init_boot<slot>.img");
-            rep.log("  adb pull /sdcard/Download/magisk_patched-*.img <workdir>/magisk/");
             "<workdir>/magisk/magisk_patched.img".to_string()
         }
     };
-    rep.log("  adb reboot fastboot; fastboot reboot bootloader");
+    rep.log("  adb reboot fastboot");
     rep.log(&format!("  fastboot flash init_boot{slot} {image}"));
     rep.log("  fastboot reboot");
-    rep.log("");
-    rep.log("This writes init_boot<slot> only; it never touches lk, preloader, seccfg or vbmeta.");
 }
 
-/// Patch init_boot with Magisk and flash it. `patched` skips the app step.
-pub fn install(
+fn flash_init_boot_fastbootd(
     rep: &dyn Reporter,
     settings: &Settings,
-    backup_dir: &Path,
-    patched: Option<&Path>,
-    dry_run: bool,
+    slot: &str,
+    image: &Path,
 ) -> Result<()> {
-    if dry_run {
-        print_plan(rep, backup_dir, patched, "<slot>");
-        return Ok(());
-    }
-
-    let manifest = backup::load_backup(backup_dir)?;
-    let summary = device::require_model(rep)?;
-    if summary.locked != "0" {
-        anyhow::bail!("bootloader is locked; unlock first");
-    }
-    let slot = active_slot(rep)?;
-    install_magisk_app(rep, settings)?;
-
-    let image = match patched {
-        Some(path) => {
-            check_boot_image(path)?;
-            rep.log(&format!("using patched image {}", path.display()));
-            path.to_path_buf()
-        }
-        None => {
-            let stock = backup_dir.join(format!("init_boot{slot}.img"));
-            if !stock.exists() {
-                anyhow::bail!(
-                    "the backup has no init_boot{slot}.img; Magisk patches the stock init_boot \
-                     for the active slot"
-                );
-            }
-            if let Some(info) = manifest.partitions.get(&format!("init_boot{slot}")) {
-                if info.sha256 != download::sha256_file(&stock)? {
-                    anyhow::bail!("init_boot{slot}.img does not match the backup manifest");
-                }
-                rep.log(&format!("stock init_boot{slot}.img verified"));
-            }
-            patch_with_app(rep, settings, &stock, &slot)?
-        }
+    let suffix = if slot.starts_with('_') {
+        slot.to_string()
+    } else {
+        format!("_{slot}")
     };
-
+    let partition = format!("init_boot{suffix}");
     let image_str = image
         .to_str()
         .ok_or_else(|| anyhow::anyhow!("non-UTF8 patched image path"))?;
-
+    let _ = settings;
     rep.log("rebooting to fastbootd");
     device::ensure_adb(rep)?;
     proc::adb_ok(rep, &["reboot", "fastboot"])?;
-    device::wait_for_fastboot(rep, 180)?;
-    if device::fastboot_getvar(rep, "is-userspace")?.to_lowercase() != "yes" {
-        anyhow::bail!("not in fastbootd (is-userspace != yes); try `adb reboot fastboot` again");
-    }
-    rep.log("rebooting to LK fastboot");
-    proc::fastboot_ok(rep, &["reboot", "bootloader"])?;
-    device::wait_for_fastboot(rep, 180)?;
-    if device::fastboot_getvar(rep, "is-userspace")?.to_lowercase() != "no" {
-        anyhow::bail!("need LK fastboot to write init_boot{slot}");
-    }
-
-    rep.log(&format!("flashing init_boot{slot}"));
-    proc::fastboot_ok(rep, &["flash", &format!("init_boot{slot}"), image_str])?;
+    device::wait_for_fastbootd(rep, 240)?;
+    rep.log(&format!("flashing {partition} in fastbootd"));
+    proc::fastboot_ok(rep, &["flash", &partition, image_str])?;
     proc::fastboot_ok(rep, &["reboot"])?;
     rep.log("waiting for Android");
     device::wait_for_adb(rep, 600, true)?;
-
-    if device::getprop(rep, "ro.boot.slot_suffix")? != slot {
+    if active_slot(rep)? != suffix {
         rep.log("WARNING: the active slot changed during the flash");
     }
     if adb_quiet(&["shell", "which", "magisk"]).is_some_and(|p| !p.is_empty()) {
@@ -284,14 +231,70 @@ pub fn install(
     {
         rep.log("Magisk app installed.");
     }
-    rep.log("");
-    rep.log("Next:");
-    rep.log("  - Open Magisk; finish any setup it asks for (it reboots).");
-    rep.log("  - Superuser tab -> allow Shell (needed by playfix/playid).");
-    rep.log("  - For Play Integrity: Settings -> Zygisk, then run `playfix`.");
-    rep.log("  - For Play Store certification: run `playid` and register the GSF ID.");
-    rep.log("  - `restore` from the stock backup removes Magisk again.");
     Ok(())
+}
+
+/// Patch init_boot with Magisk and flash it in fastbootd. `patched` skips the
+/// app step. The stock init_boot is supplied by the caller.
+pub fn install_from_init_boot(
+    rep: &dyn Reporter,
+    settings: &Settings,
+    stock_init_boot: &Path,
+    slot: &str,
+    patched: Option<&Path>,
+    dry_run: bool,
+) -> Result<()> {
+    if dry_run {
+        let dummy = PathBuf::from("<workdir>/magisk");
+        print_plan(rep, &dummy, patched, slot);
+        return Ok(());
+    }
+    let summary = device::require_model(rep)?;
+    if summary.locked != "0" {
+        anyhow::bail!("bootloader is locked; unlock first");
+    }
+    let suffix = if slot.starts_with('_') {
+        slot.to_string()
+    } else {
+        format!("_{slot}")
+    };
+    install_magisk_app(rep, settings)?;
+    let image = match patched {
+        Some(path) => {
+            check_boot_image(path)?;
+            path.to_path_buf()
+        }
+        None => {
+            check_boot_image(stock_init_boot)?;
+            patch_with_app(rep, settings, stock_init_boot, &suffix)?
+        }
+    };
+    flash_init_boot_fastbootd(rep, settings, &suffix, &image)?;
+    rep.log("");
+    rep.log("Magisk root install complete.");
+    Ok(())
+}
+
+/// Advanced root command. Uses the stock init_boot from a backup.
+pub fn install(
+    rep: &dyn Reporter,
+    settings: &Settings,
+    backup_dir: &Path,
+    patched: Option<&Path>,
+    dry_run: bool,
+) -> Result<()> {
+    let summary = device::require_model(rep)?;
+    if summary.locked != "0" {
+        anyhow::bail!("bootloader is locked; unlock first");
+    }
+    let slot = active_slot(rep)?;
+    let stock = backup_dir.join(format!("init_boot{slot}.img"));
+    if !stock.exists() {
+        anyhow::bail!(
+            "the backup has no init_boot{slot}.img; Magisk patches the stock init_boot for the active slot"
+        );
+    }
+    install_from_init_boot(rep, settings, &stock, &slot, patched, dry_run)
 }
 
 fn install_magisk_app(rep: &dyn Reporter, settings: &Settings) -> Result<()> {

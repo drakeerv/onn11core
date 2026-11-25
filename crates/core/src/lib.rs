@@ -85,6 +85,18 @@ impl Settings {
     pub fn gki_image(&self) -> PathBuf {
         self.images_dir().join("gki").join(consts::GKI.file_name)
     }
+
+    pub fn stock_dir(&self) -> PathBuf {
+        self.workdir.join("stock")
+    }
+
+    pub fn stock_bundle(&self) -> PathBuf {
+        self.images_dir().join(consts::STOCK_SMALL.file_name)
+    }
+
+    pub fn stock_file(&self, name: &str) -> PathBuf {
+        self.stock_dir().join(name)
+    }
 }
 
 /// The one-line device summary shown by check and the GUI.

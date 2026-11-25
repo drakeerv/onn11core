@@ -361,3 +361,134 @@ pub fn restore(
     proc::fastboot_ok(rep, &["reboot", "recovery"])?;
     Ok(())
 }
+
+/// Fastbootd-only install for the wizard. The stock physical images come from
+/// the small stock bundle; the stock vendor modules stay in place.
+pub fn install_fastbootd(
+    rep: &dyn Reporter,
+    settings: &Settings,
+    slot: &str,
+    variant: Variant,
+    stock_vbmeta: &Path,
+    stock_boot: &Path,
+    use_gki: bool,
+    dry_run: bool,
+) -> Result<()> {
+    let image = download::ensure_lineage(rep, settings, variant)?;
+    let gki = if use_gki {
+        Some(download::ensure_gki(rep, settings)?)
+    } else {
+        None
+    };
+    let image_size = fs::metadata(&image)?.len();
+    if !stock_vbmeta.exists() {
+        anyhow::bail!("missing stock vbmeta {}", stock_vbmeta.display());
+    }
+    if gki.is_none() && !stock_boot.exists() {
+        anyhow::bail!("missing stock boot {}", stock_boot.display());
+    }
+
+    let system = format!("system_{slot}");
+    let product = format!("product_{slot}");
+    let vbmeta_name = format!("vbmeta_{slot}");
+    let boot_name = format!("boot_{slot}");
+
+    if dry_run {
+        rep.log("dry run; would run in fastbootd:");
+        rep.log("  adb reboot fastboot");
+        rep.log(&format!("  fastboot delete-logical-partition {product}"));
+        rep.log(&format!(
+            "  fastboot resize-logical-partition {system} <size>"
+        ));
+        rep.log(&format!("  fastboot flash {system} {}", image.display()));
+        rep.log(&format!(
+            "  fastboot --disable-verity --disable-verification flash {vbmeta_name} {}",
+            stock_vbmeta.display()
+        ));
+        if let Some(gki) = &gki {
+            rep.log(&format!("  fastboot flash {boot_name} {}", gki.display()));
+        } else {
+            rep.log(&format!(
+                "  fastboot flash {boot_name} {}",
+                stock_boot.display()
+            ));
+        }
+        rep.log("  fastboot -w");
+        rep.log("  fastboot reboot recovery, then Factory data reset");
+        return Ok(());
+    }
+
+    let already_fastbootd = device::fastboot_serial().is_some()
+        && !crate::unlock::lk_present()
+        && device::fastboot_getvar(rep, "is-userspace")?.eq_ignore_ascii_case("yes");
+    if !already_fastbootd {
+        device::ensure_adb(rep)?;
+        proc::adb_ok(rep, &["reboot", "fastboot"])?;
+        device::wait_for_fastbootd(rep, 240)?;
+    }
+
+    let current = device::fastboot_getvar(rep, "current-slot")?;
+    if !current.is_empty() && current.trim().trim_start_matches('_') != slot {
+        anyhow::bail!("fastbootd is on slot {current:?}, expected {slot}");
+    }
+    let unlocked = device::fastboot_getvar(rep, "unlocked")?;
+    if !unlocked.is_empty() && !unlocked.to_lowercase().contains("yes") {
+        anyhow::bail!("bootloader reports unlocked={unlocked:?}");
+    }
+
+    let product_size = parse_size(&device::fastboot_getvar(
+        rep,
+        &format!("partition-size:{product}"),
+    )?)
+    .unwrap_or(0);
+    if product_size > 0 {
+        rep.log(&format!("deleting {product} to free super space"));
+        let _ = proc::fastboot_ok(rep, &["delete-logical-partition", &product]);
+    }
+
+    let current_size = parse_size(&device::fastboot_getvar(
+        rep,
+        &format!("partition-size:{system}"),
+    )?)
+    .unwrap_or(0);
+    if current_size < image_size {
+        let target = std::cmp::max(image_size + 64 * 1024 * 1024, 3_000_000_000);
+        rep.log(&format!("resizing {system} to {target} bytes"));
+        proc::fastboot_ok(
+            rep,
+            &["resize-logical-partition", &system, &target.to_string()],
+        )?;
+    }
+
+    rep.log(&format!("flashing {system}"));
+    proc::fastboot_ok(rep, &["flash", &system, &image.display().to_string()])?;
+
+    rep.log(&format!("flashing {vbmeta_name} with verity disabled"));
+    proc::fastboot_ok(
+        rep,
+        &[
+            "--disable-verity",
+            "--disable-verification",
+            "flash",
+            &vbmeta_name,
+            &stock_vbmeta.display().to_string(),
+        ],
+    )?;
+
+    if let Some(gki) = &gki {
+        rep.log(&format!("flashing GKI {boot_name}"));
+        proc::fastboot_ok(rep, &["flash", &boot_name, &gki.display().to_string()])?;
+    } else {
+        rep.log(&format!("flashing stock {boot_name}"));
+        proc::fastboot_ok(
+            rep,
+            &["flash", &boot_name, &stock_boot.display().to_string()],
+        )?;
+    }
+
+    rep.log("wiping userdata and metadata");
+    proc::fastboot_ok(rep, &["-w"])?;
+    rep.log("rebooting to recovery for the final factory reset");
+    let _ = proc::fastboot_ok(rep, &["reboot", "recovery"]);
+    Ok(())
+}

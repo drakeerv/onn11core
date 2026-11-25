@@ -115,6 +115,17 @@ pub const LINEAGE_GAPPS: Lineage = Lineage {
     img_size: 3_446_353_920,
 };
 
+/// Small stock images used by the fast path and the optional root install.
+/// The bundle contains only model firmware images, not per-device calibration.
+pub const STOCK_SMALL: Asset = Asset {
+    url: "https://github.com/drakeerv/onn11core/releases/download/v0.2.0/onn11core-stock-small.tar.gz",
+    file_name: "onn11core-stock-small.tar.gz",
+    sha256: Some("7ac72f1457a1b1ef84f220438b06d6c944022b15c11900f8f4fd1750ae82f491"),
+    sha1: None,
+    md5: None,
+    size: 37_901_042,
+};
+
 /// Google GKI kernel built for the stock vendor module set.
 pub const GKI: Asset = Asset {
     url: "https://github.com/drakeerv/onn11core/releases/download/v0.1.0/boot_b_gki.img",

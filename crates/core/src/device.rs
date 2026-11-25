@@ -31,6 +31,41 @@ pub fn adb_present() -> bool {
     adb_state() == "device"
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AdbMode {
+    None,
+    Unauthorized,
+    Sideload,
+    Recovery,
+    Android,
+    Unknown,
+}
+
+fn adb_prop(name: &str) -> String {
+    quiet("adb", &["shell", "getprop", name])
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default()
+}
+
+pub fn adb_mode() -> AdbMode {
+    match adb_state().as_str() {
+        "sideload" => return AdbMode::Sideload,
+        "unauthorized" => return AdbMode::Unauthorized,
+        "device" => {}
+        _ => return AdbMode::None,
+    }
+    let bootmode = adb_prop("ro.bootmode");
+    let recovery = adb_prop("ro.boot.recovery");
+    let completed = adb_prop("sys.boot_completed");
+    if bootmode.contains("recovery") || recovery == "1" {
+        AdbMode::Recovery
+    } else if completed == "1" {
+        AdbMode::Android
+    } else {
+        AdbMode::Unknown
+    }
+}
+
 pub fn fastboot_serial() -> Option<String> {
     let out = quiet("fastboot", &["devices"])?;
     let text = String::from_utf8_lossy(&out.stdout);
@@ -82,6 +117,19 @@ pub fn replug_prompt(rep: &dyn Reporter) {
     let _ = io::stdin().read_line(&mut line);
 }
 
+pub fn wait_for_fastbootd(rep: &dyn Reporter, timeout_secs: u64) -> Result<()> {
+    let deadline = Instant::now() + Duration::from_secs(timeout_secs);
+    while Instant::now() < deadline {
+        if fastboot_serial().is_some() && !crate::unlock::lk_present() {
+            if fastboot_getvar(rep, "is-userspace")?.eq_ignore_ascii_case("yes") {
+                return Ok(());
+            }
+        }
+        std::thread::sleep(Duration::from_secs(2));
+    }
+    anyhow::bail!("timed out after {timeout_secs}s waiting for fastbootd")
+}
+
 pub fn wait_for_fastboot(_rep: &dyn Reporter, timeout_secs: u64) -> Result<()> {
     let deadline = Instant::now() + Duration::from_secs(timeout_secs);
     while Instant::now() < deadline {
@@ -131,6 +179,19 @@ pub fn summary(rep: &dyn Reporter) -> Result<DeviceSummary> {
 
 pub fn require_model(rep: &dyn Reporter) -> Result<DeviceSummary> {
     wait_for_adb(rep, 300, true)?;
+    let s = summary(rep)?;
+    if !s.is_t405a() {
+        anyhow::bail!(
+            "this is not an onn 11\" Core (T405A): device={:?} board={:?}",
+            s.model,
+            s.board
+        );
+    }
+    Ok(s)
+}
+
+pub fn require_model_any(rep: &dyn Reporter) -> Result<DeviceSummary> {
+    wait_for_adb(rep, 60, false)?;
     let s = summary(rep)?;
     if !s.is_t405a() {
         anyhow::bail!(

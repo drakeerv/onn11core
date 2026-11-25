@@ -1,8 +1,8 @@
 # onn11core
 
-A small command line installer for the onn 11" Core (2026) tablet. It unlocks
-the bootloader, backs up the stock partitions, and installs LineageOS. It also
-handles the recommended GKI kernel and a stock restore.
+A guided installer for the onn 11" Core (2026) tablet. One command walks through
+the unlock, optional stock backup, LineageOS GSI, recommended Google GKI kernel,
+and optional Magisk root.
 
 This is a stopgap until the official LineageOS port. It is not a full ROM.
 
@@ -17,63 +17,74 @@ recovery path. The unlock is irreversible in practice and wipes userdata.
 ## Requirements
 
 - Linux or Windows. Linux is the tested path.
-- Android platform-tools (adb and fastboot).
-- USB debugging enabled, or the tablet in fastboot mode.
+- Android platform-tools (adb and fastboot) on PATH.
+- Stock recovery adb. The recommended entry is to power off, hold Volume Up, and
+  plug in USB. No developer settings are needed.
 - Windows needs a libusb/WinUSB driver for the raw USB unlock. WSL2 with usbipd
   is the easiest route.
-- An unlocked bootloader for backup and flash. If it is locked, unlock first.
+- The wizard detects whether the bootloader is locked. No flag is required.
 
 ## Quick start
 
 Download the latest release from
 https://github.com/drakeerv/onn11core/releases/latest and run:
 
+```sh
+onn11core
+```
+
 Linux has two builds. Use `onn11core-linux-x86_64-musl.tar.gz` for a static
 binary, or `onn11core-linux-x86_64-glibc.tar.gz` for a normal glibc system.
 
-```sh
-onn11core check
-onn11core unlock
-onn11core backup
-onn11core flash --backup /path/to/backup --variant microg
-```
+The wizard asks:
 
-The one-shot path is:
+1. LineageOS variant: microG, vanilla, or GApps.
+2. Install Magisk root? Default no.
+3. Back up the stock partitions? Default no. The backup takes 10 to 20 minutes
+   and keeps per-device calibration and serial data.
 
-```sh
-onn11core all --variant microg
-```
+It then detects recovery adb, Android adb, fastbootd, or raw LK fastboot,
+unlocks if needed, and uses fastbootd for the install.
 
-This flashes the recommended GKI kernel by default. Add `--stock-kernel` to keep
-the older stock kernel.
-
-Use `--variant vanilla` for LineageOS without microG. The GApps GSI is also
-available with `--variant gapps`.
+The GKI kernel is flashed by default. It includes the GhostLock fix and other
+security backports. The stock kernel is only an advanced fallback. Stock vendor
+modules stay in place.
 
 After the flash, use Recovery and choose Factory data reset. This step is
 required on this tablet.
 
-The Google GKI kernel is recommended. It includes the GhostLock fix and other
-security backports from the newer GKI branch. The `all` command flashes it. If
-you use the step-by-step commands, run this after the GSI boots:
+## What the wizard does
 
-```sh
-onn11core gki
-```
-
-The stock kernel is only a fallback. The stock vendor modules stay in place
-either way.
+- Recovery adb is the recommended path. Android adb and the Volume Up + Volume
+  Down keybind also work.
+- The raw USB unlock is the only LK step. No LK fastboot CLI commands are used.
+- The active slot gets the GSI, GKI, and vbmeta. The other slot stays stock.
+- fastbootd is used for the system and physical image writes.
+- The small stock bundle supplies model-level stock vbmeta, boot, and init_boot
+  images for the fast path and root.
+- The stock backup is optional and per-device.
 
 ## Vendor modules
 
 Vendor modules stay stock. The stopgap does not package the source-built vendor
 modules. They are build artifacts for the official LineageOS port.
 
-## Manual method
+## Probe
 
-The same steps are documented as plain fastboot commands in
-[docs/MANUAL.md](docs/MANUAL.md). The tool is still the safest way to run the
-raw USB unlock and the stock backup.
+A read-only state probe is available:
+
+```sh
+onn11core probe
+```
+
+It prints the detected state, model, slot, lock state, and LK or fastbootd
+details without changing anything.
+
+## Manual and testing
+
+The plain fastboot path is in [docs/MANUAL.md](docs/MANUAL.md).
+Build instructions are in [docs/BUILDING.md](docs/BUILDING.md).
+The current and new tablet test checklist is in [docs/TESTING.md](docs/TESTING.md).
 
 ## Stock dump
 
@@ -81,8 +92,8 @@ The stock dump is my own dump, hosted at
 [el-vertedero/onn_onn11core_dump](https://github.com/el-vertedero/onn_onn11core_dump).
 
 It is a reference tree, not a flashable bundle. It includes boot chain files
-that must not be flashed. The tool takes its own stock backup with a DSU before
-flashing. Keep that backup, it is your restore path.
+that must not be flashed. It is model-level and does not replace a per-device
+backup.
 
 ## Build
 
@@ -92,8 +103,9 @@ The tool is Rust. See [docs/BUILDING.md](docs/BUILDING.md).
 cargo build --release
 ```
 
-The GKI kernel is built from the public onn-oss kernel source. The
-release includes a prebuilt boot image.
+The released GKI boot image is built from Google AOSP `common-android16-6.12`,
+pinned to `android16-6.12-2025-09`, plus the compatibility patch. It does not use
+the Tinno source dump.
 
 ## Credits
 
@@ -103,6 +115,7 @@ release includes a prebuilt boot image.
 - **TrebleDroid**: [treble_experimentations](https://github.com/TrebleDroid/treble_experimentations) - DSU userdebug GSI used by the stock backup.
 - **MisterZtr**: [LineageOS_gsi](https://github.com/MisterZtr/LineageOS_gsi) - vanilla LineageOS GSI.
 - **LineageOS for microG**: [SourceForge](https://sourceforge.net/projects/lineageos-4-microg/) - microG GSI.
-- **onn-oss**: [kernel-6.12](https://github.com/onn-oss/kernel-6.12) - device kernel source for the GKI build.
+- **Google AOSP**: [kernel/common](https://android.googlesource.com/kernel/common/) - GKI kernel source for the released boot image.
+- **onn-oss**: [kernel-6.12](https://github.com/onn-oss/kernel-6.12) - device kernel and module source archive for the module build and official port.
 
 License: MIT. See LICENSE.

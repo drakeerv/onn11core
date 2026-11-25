@@ -3,6 +3,7 @@
 use crate::consts::{Asset, Variant, GKI, TREBLEDROID};
 use crate::report::Reporter;
 use crate::{Result, Settings};
+use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use md5::Md5;
@@ -10,7 +11,8 @@ use sha1::Sha1;
 use sha2::{Digest, Sha256};
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use xz2::read::XzDecoder;
 
 const UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36";
@@ -255,4 +257,28 @@ pub fn ensure_custom_image(rep: &dyn Reporter, path: &Path) -> Result<PathBuf> {
         fs::metadata(&path)?.len()
     ));
     Ok(path)
+}
+
+pub fn ensure_stock(rep: &dyn Reporter, settings: &Settings) -> Result<PathBuf> {
+    let dir = settings.stock_dir();
+    let needed = [
+        "vbmeta_a.img",
+        "vbmeta_b.img",
+        "init_boot_a.img",
+        "init_boot_b.img",
+    ];
+    if needed.iter().all(|n| dir.join(n).exists()) {
+        return Ok(dir);
+    }
+    fs::create_dir_all(&dir)?;
+    let bundle = download_asset(rep, &crate::consts::STOCK_SMALL, &settings.stock_bundle())?;
+    rep.log("extracting stock images");
+    let mut archive = tar::Archive::new(GzDecoder::new(BufReader::new(File::open(&bundle)?)));
+    archive.unpack(&dir)?;
+    for name in needed {
+        if !dir.join(name).exists() {
+            anyhow::bail!("stock bundle is missing {name}");
+        }
+    }
+    Ok(dir)
 }

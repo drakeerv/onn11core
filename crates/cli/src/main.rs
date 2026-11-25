@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
 use onn11core_core::{self as core, Settings, StdoutReporter, Variant};
+
+mod wizard;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
@@ -14,29 +16,38 @@ struct Cli {
     #[arg(long, global = true)]
     workdir: Option<PathBuf>,
     #[command(subcommand)]
-    cmd: Cmd,
+    cmd: Option<Cmd>,
 }
 
 #[derive(Subcommand)]
 enum Cmd {
+    /// Guided install
+    Wizard,
+    /// Read-only tablet state probe
+    Probe,
     /// Show device and tool state
+    #[command(hide = true)]
     Check,
     /// Pre-fetch images
+    #[command(hide = true)]
     Download {
         #[arg(value_parser = ["trebledroid", "vanilla", "microg", "gapps", "all"])]
         what: String,
     },
     /// Unlock the bootloader (wipes userdata)
+    #[command(hide = true)]
     Unlock {
         #[arg(long)]
         yes: bool,
     },
     /// Back up the stock partitions through a DSU userdebug GSI
+    #[command(hide = true)]
     Backup {
         #[arg(long)]
         out: Option<PathBuf>,
     },
     /// Flash a GSI
+    #[command(hide = true)]
     Flash {
         #[arg(long)]
         backup: PathBuf,
@@ -51,6 +62,7 @@ enum Cmd {
         dry_run: bool,
     },
     /// Flash the recommended Google GKI boot image
+    #[command(hide = true)]
     Gki {
         #[arg(long)]
         image: Option<PathBuf>,
@@ -58,6 +70,7 @@ enum Cmd {
         dry_run: bool,
     },
     /// Patch init_boot with Magisk and flash it
+    #[command(hide = true)]
     Root {
         #[arg(long)]
         backup: PathBuf,
@@ -67,6 +80,7 @@ enum Cmd {
         dry_run: bool,
     },
     /// Restore stock boot/vbmeta/super from a backup
+    #[command(hide = true)]
     Restore {
         #[arg(long)]
         backup: PathBuf,
@@ -79,6 +93,7 @@ enum Cmd {
         dry_run: bool,
     },
     /// check -> unlock -> backup -> flash -> GKI
+    #[command(hide = true)]
     All {
         #[arg(long, value_parser = ["vanilla", "microg", "gapps"], default_value = "vanilla")]
         variant: String,
@@ -116,7 +131,17 @@ fn run() -> anyhow::Result<()> {
     let settings = Settings::new(cli.workdir.unwrap_or_else(default_workdir));
     let rep = StdoutReporter;
 
-    match cli.cmd {
+    let Some(cmd) = cli.cmd else {
+        return wizard::run(&settings);
+    };
+
+    match cmd {
+        Cmd::Wizard => {
+            wizard::run(&settings)?;
+        }
+        Cmd::Probe => {
+            wizard::probe(&settings)?;
+        }
         Cmd::Check => {
             core::check(&rep)?;
         }

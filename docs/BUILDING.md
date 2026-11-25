@@ -42,11 +42,14 @@ cargo test
 The GKI kernel is recommended. It includes the GhostLock fix and other security
 backports from the newer Google GKI branch. The stock kernel is only a fallback.
 
-The public kernel source is at https://github.com/onn-oss/kernel-6.12 on the
-device branch. drakeerv obtained the Tinno source code from Walmart and
-published it there. The release boot image was built from the AOSP GKI
-`android16-6.12` source plus the device module tree, using the build notes and
-patches from the onn-clean kernel pipeline.
+The released GKI boot image is built from Google AOSP `common-android16-6.12`,
+pinned to `android16-6.12-2025-09`, plus the compatibility patch. It does not
+use the Tinno source dump.
+
+drakeerv obtained the Tinno source code from Walmart and published it on
+onn-oss. That source is the device kernel and module archive. It is used by the
+separate module build and the official LineageOS port, not by the GKI release
+image.
 
 At a high level:
 
