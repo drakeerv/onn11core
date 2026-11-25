@@ -96,7 +96,9 @@ fastboot reboot recovery
 ```
 
 In Recovery choose Factory data reset. This initializes metadata encryption.
-Without it the next boot can fail with `init_user0_failed`.
+Without it the next boot can fail with `init_user0_failed`. If the stock recovery
+shows a "Try again" / "Factory data reset" screen, choose Factory data reset
+with the volume keys, press Power, then confirm. Do not choose Try again.
 
 ## 7. GKI kernel (recommended)
 

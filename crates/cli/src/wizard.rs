@@ -245,6 +245,7 @@ fn install(
     let vbmeta = stock.join(format!("vbmeta_{slot}.img"));
     let boot = stock.join(format!("boot_{slot}.img"));
     let init_boot = stock.join(format!("init_boot_{slot}.img"));
+    let dtbo = stock.join(format!("dtbo_{slot}.img"));
 
     rep.log("");
     rep.log("Install plan");
@@ -267,10 +268,14 @@ fn install(
         anyhow::bail!("install not confirmed");
     }
 
-    flash::install_fastbootd(rep, settings, &slot, variant, &vbmeta, &boot, true, false)?;
+    flash::install_fastbootd(
+        rep, settings, &slot, variant, &vbmeta, &boot, &init_boot, &dtbo, true, false,
+    )?;
 
     rep.log("");
-    rep.log("On the tablet: Recovery -> Factory data reset -> confirm.");
+    rep.log("On the tablet the stock recovery may show Try again / Factory data reset.");
+    rep.log("Choose Factory data reset with the volume keys, press Power, then confirm.");
+    rep.log("Do not choose Try again. This initializes metadata encryption.");
     rep.log("Waiting for the GSI to boot...");
     device::wait_for_adb(rep, 3600, true)?;
 
@@ -362,8 +367,16 @@ pub fn probe(settings: &Settings) -> anyhow::Result<()> {
     let _ = settings;
     let rep = StdoutReporter;
     match detect(&rep)? {
-        State::Recovery(s) | State::Android(s) => {
-            rep.log("state: adb");
+        State::Recovery(s) => {
+            rep.log("state: recovery adb");
+            rep.log(&format!("model: {} / {}", s.model, s.board));
+            rep.log(&format!("fingerprint: {}", s.fingerprint));
+            rep.log(&format!("slot: {}", s.slot));
+            rep.log(&format!("lock: {}", s.locked));
+            rep.log(&format!("verified boot: {}", s.verified_boot));
+        }
+        State::Android(s) => {
+            rep.log("state: android adb");
             rep.log(&format!("model: {} / {}", s.model, s.board));
             rep.log(&format!("fingerprint: {}", s.fingerprint));
             rep.log(&format!("slot: {}", s.slot));

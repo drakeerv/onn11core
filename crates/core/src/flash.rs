@@ -371,6 +371,8 @@ pub fn install_fastbootd(
     variant: Variant,
     stock_vbmeta: &Path,
     stock_boot: &Path,
+    stock_init_boot: &Path,
+    stock_dtbo: &Path,
     use_gki: bool,
     dry_run: bool,
 ) -> Result<()> {
@@ -384,6 +386,12 @@ pub fn install_fastbootd(
     if !stock_vbmeta.exists() {
         anyhow::bail!("missing stock vbmeta {}", stock_vbmeta.display());
     }
+    if !stock_init_boot.exists() {
+        anyhow::bail!("missing stock init_boot {}", stock_init_boot.display());
+    }
+    if !stock_dtbo.exists() {
+        anyhow::bail!("missing stock dtbo {}", stock_dtbo.display());
+    }
     if gki.is_none() && !stock_boot.exists() {
         anyhow::bail!("missing stock boot {}", stock_boot.display());
     }
@@ -392,40 +400,97 @@ pub fn install_fastbootd(
     let product = format!("product_{slot}");
     let vbmeta_name = format!("vbmeta_{slot}");
     let boot_name = format!("boot_{slot}");
+    let init_boot_name = format!("init_boot_{slot}");
+    let dtbo_name = format!("dtbo_{slot}");
+    let boot_image = match &gki {
+        Some(gki) => gki.clone(),
+        None => stock_boot.to_path_buf(),
+    };
 
     if dry_run {
-        rep.log("dry run; would run in fastbootd:");
-        rep.log("  adb reboot fastboot");
+        rep.log("dry run; would run:");
+        rep.log("LK fastboot (physical images):");
+        rep.log("  adb reboot bootloader   # or fastboot reboot bootloader from fastbootd");
+        rep.log("  unplug, Enter, first flash starts; plug when it is waiting");
+        rep.log(&format!(
+            "  fastboot flash {boot_name} {}",
+            boot_image.display()
+        ));
+        rep.log(&format!(
+            "  fastboot --disable-verity --disable-verification flash {vbmeta_name} {}",
+            stock_vbmeta.display()
+        ));
+        rep.log(&format!(
+            "  fastboot flash {init_boot_name} {}",
+            stock_init_boot.display()
+        ));
+        rep.log(&format!(
+            "  fastboot flash {dtbo_name} {}",
+            stock_dtbo.display()
+        ));
+        rep.log("  fastboot reboot fastboot");
+        rep.log("fastbootd (system image):");
         rep.log(&format!("  fastboot delete-logical-partition {product}"));
         rep.log(&format!(
             "  fastboot resize-logical-partition {system} <size>"
         ));
         rep.log(&format!("  fastboot flash {system} {}", image.display()));
-        rep.log(&format!(
-            "  fastboot --disable-verity --disable-verification flash {vbmeta_name} {}",
-            stock_vbmeta.display()
-        ));
-        if let Some(gki) = &gki {
-            rep.log(&format!("  fastboot flash {boot_name} {}", gki.display()));
-        } else {
-            rep.log(&format!(
-                "  fastboot flash {boot_name} {}",
-                stock_boot.display()
-            ));
-        }
         rep.log("  fastboot -w");
-        rep.log("  fastboot reboot recovery, then Factory data reset");
+        rep.log("  fastboot reboot recovery, then choose Factory data reset (not Try again)");
         return Ok(());
     }
 
-    let already_fastbootd = device::fastboot_serial().is_some()
+    let in_fastbootd = device::fastboot_serial().is_some()
         && !crate::unlock::lk_present()
         && device::fastboot_getvar(rep, "is-userspace")?.eq_ignore_ascii_case("yes");
-    if !already_fastbootd {
-        device::ensure_adb(rep)?;
-        proc::adb_ok(rep, &["reboot", "fastboot"])?;
-        device::wait_for_fastbootd(rep, 240)?;
+    if in_fastbootd {
+        rep.log("rebooting from fastbootd to LK fastboot for the physical images");
+        proc::fastboot_ok(rep, &["reboot", "bootloader"])?;
+    } else if device::fastboot_serial().is_some() && crate::unlock::lk_present() {
+        rep.log("already in LK fastboot");
+    } else if device::adb_present() {
+        rep.log("rebooting to LK fastboot for the physical images");
+        proc::adb_ok(rep, &["reboot", "bootloader"])?;
+    } else {
+        anyhow::bail!("need recovery adb, Android adb, fastbootd, or LK fastboot");
     }
+
+    rep.log("starting the first LK flash; the command waits for the tablet");
+    let boot_str = boot_image
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("non-UTF8 boot image path"))?;
+    proc::fastboot_ok(rep, &["flash", &boot_name, boot_str])?;
+
+    rep.log("flashing stock vbmeta with verity disabled");
+    let vbmeta_str = stock_vbmeta
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("non-UTF8 vbmeta path"))?;
+    proc::fastboot_ok(
+        rep,
+        &[
+            "--disable-verity",
+            "--disable-verification",
+            "flash",
+            &vbmeta_name,
+            vbmeta_str,
+        ],
+    )?;
+
+    rep.log("flashing stock init_boot");
+    let init_str = stock_init_boot
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("non-UTF8 init_boot path"))?;
+    proc::fastboot_ok(rep, &["flash", &init_boot_name, init_str])?;
+
+    rep.log("flashing stock dtbo");
+    let dtbo_str = stock_dtbo
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("non-UTF8 dtbo path"))?;
+    proc::fastboot_ok(rep, &["flash", &dtbo_name, dtbo_str])?;
+
+    rep.log("physical images done; entering fastbootd for the system image");
+    proc::fastboot_ok(rep, &["reboot", "fastboot"])?;
+    device::wait_for_fastbootd(rep, 240)?;
 
     let current = device::fastboot_getvar(rep, "current-slot")?;
     if !current.is_empty() && current.trim().trim_start_matches('_') != slot {
@@ -463,32 +528,10 @@ pub fn install_fastbootd(
     rep.log(&format!("flashing {system}"));
     proc::fastboot_ok(rep, &["flash", &system, &image.display().to_string()])?;
 
-    rep.log(&format!("flashing {vbmeta_name} with verity disabled"));
-    proc::fastboot_ok(
-        rep,
-        &[
-            "--disable-verity",
-            "--disable-verification",
-            "flash",
-            &vbmeta_name,
-            &stock_vbmeta.display().to_string(),
-        ],
-    )?;
-
-    if let Some(gki) = &gki {
-        rep.log(&format!("flashing GKI {boot_name}"));
-        proc::fastboot_ok(rep, &["flash", &boot_name, &gki.display().to_string()])?;
-    } else {
-        rep.log(&format!("flashing stock {boot_name}"));
-        proc::fastboot_ok(
-            rep,
-            &["flash", &boot_name, &stock_boot.display().to_string()],
-        )?;
-    }
-
     rep.log("wiping userdata and metadata");
     proc::fastboot_ok(rep, &["-w"])?;
     rep.log("rebooting to recovery for the final factory reset");
+    rep.log("On the tablet choose Factory data reset, not Try again, then confirm.");
     let _ = proc::fastboot_ok(rep, &["reboot", "recovery"]);
     Ok(())
 }

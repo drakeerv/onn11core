@@ -44,22 +44,31 @@ The wizard asks:
    and keeps per-device calibration and serial data.
 
 It then detects recovery adb, Android adb, fastbootd, or raw LK fastboot,
-unlocks if needed, and uses fastbootd for the install.
+unlocks if needed, writes the physical images in LK fastboot, and writes the
+system image in fastbootd. The first LK flash starts immediately after the
+reboot and waits for the tablet. No unplug is needed unless the command was
+started late.
 
 The GKI kernel is flashed by default. It includes the GhostLock fix and other
 security backports. The stock kernel is only an advanced fallback. Stock vendor
 modules stay in place.
 
 After the flash, use Recovery and choose Factory data reset. This step is
-required on this tablet.
+required on this tablet. The stock recovery may show a "Try again" / "Factory
+data reset" screen. Choose Factory data reset with the volume keys, press
+Power, then confirm. Do not choose Try again. This initializes metadata
+encryption.
 
 ## What the wizard does
 
 - Recovery adb is the recommended path. Android adb and the Volume Up + Volume
   Down keybind also work.
-- The raw USB unlock is the only LK step. No LK fastboot CLI commands are used.
+- The raw USB unlock and the physical image writes use LK. The system image and
+  the final wipe use fastbootd. The wizard starts the first LK flash immediately
+  and waits for the tablet.
 - The active slot gets the GSI, GKI, and vbmeta. The other slot stays stock.
-- fastbootd is used for the system and physical image writes.
+- LK fastboot is used for vbmeta, boot, init_boot, and dtbo. fastbootd is used
+  for the system image and the final wipe.
 - The small stock bundle supplies model-level stock vbmeta, boot, and init_boot
   images for the fast path and root.
 - The stock backup is optional and per-device.

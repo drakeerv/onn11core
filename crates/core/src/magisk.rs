@@ -188,7 +188,8 @@ fn print_plan(rep: &dyn Reporter, backup: &Path, patched: Option<&Path>, slot: &
             "<workdir>/magisk/magisk_patched.img".to_string()
         }
     };
-    rep.log("  adb reboot fastboot");
+    rep.log("  adb reboot bootloader");
+    rep.log("  start the first flash immediately after the reboot; it waits for the tablet");
     rep.log(&format!("  fastboot flash init_boot{slot} {image}"));
     rep.log("  fastboot reboot");
 }
@@ -209,11 +210,11 @@ fn flash_init_boot_fastbootd(
         .to_str()
         .ok_or_else(|| anyhow::anyhow!("non-UTF8 patched image path"))?;
     let _ = settings;
-    rep.log("rebooting to fastbootd");
+    rep.log("rebooting to LK fastboot for init_boot");
     device::ensure_adb(rep)?;
-    proc::adb_ok(rep, &["reboot", "fastboot"])?;
-    device::wait_for_fastbootd(rep, 240)?;
-    rep.log(&format!("flashing {partition} in fastbootd"));
+    proc::adb_ok(rep, &["reboot", "bootloader"])?;
+    rep.log("starting the init_boot flash; the command waits for the tablet");
+    rep.log(&format!("flashing {partition} in LK fastboot"));
     proc::fastboot_ok(rep, &["flash", &partition, image_str])?;
     proc::fastboot_ok(rep, &["reboot"])?;
     rep.log("waiting for Android");
@@ -234,7 +235,7 @@ fn flash_init_boot_fastbootd(
     Ok(())
 }
 
-/// Patch init_boot with Magisk and flash it in fastbootd. `patched` skips the
+/// Patch init_boot with Magisk and flash it in LK fastboot. `patched` skips the
 /// app step. The stock init_boot is supplied by the caller.
 pub fn install_from_init_boot(
     rep: &dyn Reporter,

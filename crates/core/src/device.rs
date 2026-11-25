@@ -28,7 +28,7 @@ pub fn adb_state() -> String {
 }
 
 pub fn adb_present() -> bool {
-    adb_state() == "device"
+    matches!(adb_state().as_str(), "device" | "recovery" | "rescue")
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -51,7 +51,8 @@ pub fn adb_mode() -> AdbMode {
     match adb_state().as_str() {
         "sideload" => return AdbMode::Sideload,
         "unauthorized" => return AdbMode::Unauthorized,
-        "device" => {}
+        "recovery" => return AdbMode::Recovery,
+        "device" | "rescue" => {}
         _ => return AdbMode::None,
     }
     let bootmode = adb_prop("ro.bootmode");
@@ -83,7 +84,7 @@ pub fn wait_for_adb(rep: &dyn Reporter, timeout_secs: u64, require_boot: bool) -
     let mut announced = false;
     while Instant::now() < deadline {
         let state = adb_state();
-        if state == "device" {
+        if state == "device" || (!require_boot && matches!(state.as_str(), "recovery" | "rescue")) {
             if !require_boot {
                 return Ok(());
             }
@@ -107,10 +108,9 @@ pub fn wait_for_adb(rep: &dyn Reporter, timeout_secs: u64, require_boot: bool) -
 
 pub fn replug_prompt(rep: &dyn Reporter) {
     rep.log("");
-    rep.log("LK fastboot on this tablet needs the command started before reconnect.");
-    rep.log("1. Unplug the tablet.");
-    rep.log("2. Press Enter here.");
-    rep.log("3. Plug it back in when the next fastboot command is waiting.");
+    rep.log("LK fastboot quirk on this tablet:");
+    rep.log("Start the first fastboot command immediately after the reboot.");
+    rep.log("The command waits for the device. No unplug is needed unless it was started late.");
     print!("> ");
     let _ = io::stdout().flush();
     let mut line = String::new();
