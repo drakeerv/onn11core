@@ -85,7 +85,6 @@ release includes a prebuilt boot image.
 
 - **drakeerv**: [GitHub](https://github.com/drakeerv), [Nura Wiki](https://wiki.nura.eco/wiki/Onn_11_Core_Tablet_%28onn-t405a%29) - unlock exploit, device work, stock dump.
 - **SelfhostedPro**: [GitHub](https://github.com/SelfhostedPro), [t405a-gsi](https://github.com/SelfhostedPro/t405a-gsi) - MIT licensed core flashing logic.
-- **phildabill**: [onn-t405a-Bootloader-unlock](https://github.com/phildabill/onn-t405a-Bootloader-unlock) - unlock payload packaging reference.
 - **el-vertedero**: [onn_onn11core_dump](https://github.com/el-vertedero/onn_onn11core_dump) - hosting drakeerv's stock dump.
 - **TrebleDroid**: [treble_experimentations](https://github.com/TrebleDroid/treble_experimentations) - DSU userdebug GSI used by the stock backup.
 - **MisterZtr**: [LineageOS_gsi](https://github.com/MisterZtr/LineageOS_gsi) - vanilla LineageOS GSI.
