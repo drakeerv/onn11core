@@ -50,7 +50,7 @@ enum Cmd {
         #[arg(long)]
         dry_run: bool,
     },
-    /// Flash the optional Google GKI boot image
+    /// Flash the recommended Google GKI boot image
     Gki {
         #[arg(long)]
         image: Option<PathBuf>,
@@ -78,10 +78,11 @@ enum Cmd {
         #[arg(long)]
         dry_run: bool,
     },
-    /// check -> unlock -> backup -> flash
+    /// check -> unlock -> backup -> flash -> GKI
     All {
         #[arg(long, value_parser = ["vanilla", "microg", "gapps"], default_value = "vanilla")]
         variant: String,
+        /// Keep the stock kernel instead of the recommended GKI
         #[arg(long)]
         stock_kernel: bool,
         #[arg(long)]
