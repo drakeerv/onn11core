@@ -29,33 +29,56 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            name: linux-x86_64
+            name: linux-x86_64-glibc
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            name: linux-x86_64-musl
+            target: x86_64-unknown-linux-musl
           - os: windows-latest
             name: windows-x86_64
+            target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      - name: Linux dependencies
-        if: runner.os == 'Linux'
+      - name: Install glibc build dependencies
+        if: matrix.name == 'linux-x86_64-glibc'
         run: sudo apt-get update && sudo apt-get install -y libusb-1.0-0-dev libudev-dev
 
-      - name: Build Linux
-        if: runner.os == 'Linux'
-        run: cargo build --release --locked --features vendored-libusb
+      - name: Install musl build dependencies
+        if: matrix.name == 'linux-x86_64-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          rustup target add x86_64-unknown-linux-musl
+          mkdir -p /tmp/empty-pkgconfig
+
+      - name: Build glibc
+        if: matrix.name == 'linux-x86_64-glibc'
+        run: cargo build --release --locked --target ${{ matrix.target }} --features vendored-libusb
+
+      - name: Build musl
+        if: matrix.name == 'linux-x86_64-musl'
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          AR_x86_64_unknown_linux_musl: ar
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+          PKG_CONFIG_LIBDIR: /tmp/empty-pkgconfig
+          PKG_CONFIG_PATH: /tmp/empty-pkgconfig
+        run: cargo build --release --locked --target ${{ matrix.target }} --features vendored-libusb
 
       - name: Build Windows
-        if: runner.os == 'Windows'
-        run: cargo build --release --locked
+        if: matrix.name == 'windows-x86_64'
+        run: cargo build --release --locked --target ${{ matrix.target }}
 
       - name: Package Linux
         if: runner.os == 'Linux'
         shell: bash
         run: |
           mkdir -p dist
-          cp target/release/onn11core dist/
+          cp "target/${{ matrix.target }}/release/onn11core" dist/
           tar -C dist -czf "onn11core-${{ matrix.name }}.tar.gz" onn11core
 
       - name: Package Windows
@@ -63,7 +86,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item target/release/onn11core.exe dist/
+          Copy-Item "target/${{ matrix.target }}/release/onn11core.exe" dist/
           Compress-Archive -Path dist/onn11core.exe -DestinationPath "onn11core-${{ matrix.name }}.zip"
 
       - uses: actions/upload-artifact@v4

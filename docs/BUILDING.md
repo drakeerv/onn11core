@@ -13,11 +13,20 @@ cargo build --release
 
 The binary is `target/release/onn11core`.
 
-Linux release builds use the optional bundled libusb feature:
+The release has two Linux builds, both with the bundled libusb:
 
 ```sh
-cargo build --release --features vendored-libusb
+# glibc
+cargo build --release --target x86_64-unknown-linux-gnu --features vendored-libusb
+
+# musl, static
+sudo apt install musl-tools
+rustup target add x86_64-unknown-linux-musl
+CC_x86_64_unknown_linux_musl=musl-gcc AR_x86_64_unknown_linux_musl=ar CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc PKG_CONFIG_LIBDIR=/tmp/empty-pkgconfig PKG_CONFIG_PATH=/tmp/empty-pkgconfig cargo build --release --target x86_64-unknown-linux-musl --features vendored-libusb
 ```
+
+The empty pkg-config path disables libudev in the musl build. The musl binary
+is fully static and has no runtime libc or libusb dependency.
 
 Windows uses the vendored libusb automatically. Build on Windows with the
 normal Rust toolchain.
