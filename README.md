@@ -93,11 +93,10 @@ onn11core probe
 It prints the detected state, model, slot, lock state, and LK or fastbootd
 details without changing anything.
 
-## Manual and testing
+## Manual
 
 The plain fastboot path is in [docs/MANUAL.md](docs/MANUAL.md).
 Build instructions are in [docs/BUILDING.md](docs/BUILDING.md).
-The current and new tablet test checklist is in [docs/TESTING.md](docs/TESTING.md).
 
 ## Stock dump
 
