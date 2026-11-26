@@ -94,10 +94,10 @@ pub const LINEAGE_MICROG: Lineage = Lineage {
     asset: Asset {
         url: "https://github.com/drakeerv/onn11core/releases/download/v0.1.0/LineageOS-23.2-2026.11.18-microG-gsi-btfixed.img.xz",
         file_name: "LineageOS-23.2-2026.11.18-microG-gsi-btfixed.img.xz",
-        sha256: Some("0051ee71d9e8d614e38bc57f464803d188c38108233d4434ab7367194c1ae892"),
+        sha256: Some("88f0707b80f41753f8235d0b691faf0259ee8244ec08c3a89c8581aa230b72db"),
         sha1: None,
         md5: None,
-        size: 1_016_598_808,
+        size: 1_165_612_400,
     },
     archive_name: "LineageOS-23.2-2026.11.18-microG-gsi-btfixed.img.xz",
     img_name: "LineageOS-23.2-2026.11.18-microG-gsi-btfixed.img",
