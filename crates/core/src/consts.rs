@@ -6,6 +6,10 @@ pub const STOCK_BUILD_ID: &str = "BP2A.250605.031.A3";
 
 /// LK builds the unlock payload was verified against.
 pub const SUPPORTED_LK: &[(&str, &str)] = &[
+    (
+        "T405A_a16db949c4_202512251924",
+        "December 2025 stock, same oem erase layout",
+    ),
     ("T405A_a16db94_202604232118", "April 2026 stock"),
     ("T405A_a16db94_202608121002", "August 2026 stock"),
 ];
@@ -229,7 +233,7 @@ mod tests {
 
     #[test]
     fn supported_lk_list_is_exact() {
-        assert_eq!(SUPPORTED_LK.len(), 2);
+        assert_eq!(SUPPORTED_LK.len(), 3);
     }
 
     #[test]
