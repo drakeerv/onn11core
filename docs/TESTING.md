@@ -38,20 +38,24 @@ fastboot. fastbootd is for the system image and the final wipe.
 
 ## New tablet, full camera run
 
-1. Power off, hold Volume Up, plug in USB.
+1. Power off and unplug the new tablet.
 2. Run `onn11core`.
-3. Choose microG.
-4. Root: no for the first run, then test separately.
-5. Backup: no for speed. Note the stock dump is model-level.
-6. Confirm the active slot and the stock other slot.
-7. Watch the unlock, recovery adb return, LK physical writes, fastbootd system
+3. When it waits for LK fastboot, plug the tablet in while holding Volume Up +
+   Volume Down. The tool reads and validates LK before unlocking.
+4. Choose microG.
+5. Root: no for the first run, then test separately.
+6. Backup: no for speed. Note the stock dump is model-level.
+7. Confirm the active slot and the stock other slot.
+8. At the unlock prompt, unplug when asked, wait for the unlocker, then plug the
+   tablet back in.
+9. Watch the unlock, recovery adb return, LK physical writes, fastbootd system
    write, GKI, and final factory reset. On the Try again / Factory data reset
    screen choose Factory data reset with the volume keys and Power, then
    confirm. Do not choose Try again.
-8. Verify boot, slot, lock state, LineageOS version, GKI `uname -r`, Wi-Fi,
-   Bluetooth, touch, display, cameras, charging, and sleep.
-9. If the GKI fails, report the fallback to the stock boot.
-10. Record any LK first-command failures and any fastbootd physical write results.
+10. Verify boot, slot, lock state, LineageOS version, GKI `uname -r`, Wi-Fi,
+    Bluetooth, touch, display, cameras, charging, and sleep.
+11. If the GKI fails, report the fallback to the stock boot.
+12. Record any LK first-command failures and any fastbootd physical write results.
 
 ## Pass criteria
 

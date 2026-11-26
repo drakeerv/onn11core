@@ -76,9 +76,11 @@ fn wait_state(rep: &StdoutReporter, first: bool) -> anyhow::Result<State> {
             State::None => {
                 if !announced {
                     rep.log("");
-                    rep.log("Power off the tablet, hold Volume Up, and plug in USB.");
-                    rep.log("This boots stock recovery with adb. Waiting...");
-                    rep.log("Android with USB debugging and the Volume Up + Volume Down keybind also work.");
+                    rep.log("No adb detected.");
+                    rep.log("Turn the tablet off and unplug it.");
+                    rep.log("The tool is waiting for LK fastboot over USB.");
+                    rep.log("Plug the tablet in while holding Volume Up + Volume Down.");
+                    rep.log("The tool reads LK version, product, slot, and lock before unlocking.");
                     announced = true;
                 }
             }
@@ -146,8 +148,43 @@ fn unlock_from_adb(rep: &StdoutReporter, summary: &core::DeviceSummary) -> anyho
 
 fn unlock_from_lk(rep: &StdoutReporter) -> anyhow::Result<()> {
     rep.log("");
-    rep.log("LK fastboot detected. Sending the unlock over raw USB.");
-    let outcome = unlock::wait_and_unlock(rep, 60)?;
+    rep.log("LK fastboot detected. Reading LK info over raw USB.");
+    let info = unlock::read_lk_info(rep, 30)?;
+    rep.log(&format!("  LK version: {}", info.version));
+    rep.log(&format!("  product: {}", info.product));
+    rep.log(&format!("  slot: {}", info.slot));
+    rep.log(&format!("  unlocked: {}", info.unlocked));
+    if !device::supported_lk(&info.version) {
+        anyhow::bail!("unsupported LK version {:?}; not unlocking", info.version);
+    }
+    if info.unlocked {
+        rep.log("bootloader already unlocked; requesting fastbootd");
+        let outcome = unlock::wait_and_unlock(rep, 60)?;
+        match outcome {
+            unlock::Outcome::AlreadyUnlocked(info) => {
+                rep.log(&format!("already unlocked on slot {}", info.slot));
+                device::wait_for_fastbootd(rep, 120)?;
+            }
+            unlock::Outcome::Unlocked(info) => {
+                rep.log(&format!("payload sent on slot {}", info.slot));
+            }
+        }
+        return Ok(());
+    }
+
+    rep.log("");
+    rep.log("The bootloader is locked. The unlock wipes userdata and is irreversible.");
+    let answer = ask("Type UNLOCK ONN11CORE to continue", "");
+    if answer != "UNLOCK ONN11CORE" {
+        anyhow::bail!("unlock not confirmed");
+    }
+
+    rep.log("");
+    rep.log("Unplug the tablet now.");
+    let _ = ask("Press Enter when the tablet is unplugged", "");
+    rep.log("The unlocker is waiting for LK fastboot over USB.");
+    rep.log("Plug the tablet back in now.");
+    let outcome = unlock::wait_and_unlock(rep, 600)?;
     match &outcome {
         unlock::Outcome::Unlocked(info) => {
             rep.log(&format!(
@@ -163,7 +200,6 @@ fn unlock_from_lk(rep: &StdoutReporter) -> anyhow::Result<()> {
         }
         unlock::Outcome::AlreadyUnlocked(info) => {
             rep.log(&format!("already unlocked on slot {}", info.slot));
-            rep.log("requested fastbootd; waiting...");
             device::wait_for_fastbootd(rep, 120)?;
         }
     }

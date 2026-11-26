@@ -61,8 +61,12 @@ encryption.
 
 ## What the wizard does
 
-- Recovery adb is the recommended path. Android adb and the Volume Up + Volume
-  Down keybind also work.
+- If adb is already available, the wizard uses it.
+- On a locked tablet with no adb, the wizard waits for LK fastboot. Turn the
+  tablet off, then plug it in while holding Volume Up + Volume Down. It reads
+  and validates LK before unlocking.
+- After the unlock confirmation, unplug the tablet. The unlocker waits, then
+  plug it back in for the raw payload.
 - The raw USB unlock and the physical image writes use LK. The system image and
   the final wipe use fastbootd. The wizard starts the first LK flash immediately
   and waits for the tablet.
