@@ -20,7 +20,7 @@ const UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/53
 pub fn sha256_file(path: &Path) -> Result<String> {
     let mut h = Sha256::new();
     let mut f = BufReader::new(File::open(path)?);
-    let mut buf = [0u8; 1024 * 1024];
+    let mut buf = vec![0u8; 1024 * 1024];
     loop {
         let n = f.read(&mut buf)?;
         if n == 0 {
@@ -34,7 +34,7 @@ pub fn sha256_file(path: &Path) -> Result<String> {
 fn sha1_file(path: &Path) -> Result<String> {
     let mut h = Sha1::new();
     let mut f = BufReader::new(File::open(path)?);
-    let mut buf = [0u8; 1024 * 1024];
+    let mut buf = vec![0u8; 1024 * 1024];
     loop {
         let n = f.read(&mut buf)?;
         if n == 0 {
@@ -48,7 +48,7 @@ fn sha1_file(path: &Path) -> Result<String> {
 fn md5_file(path: &Path) -> Result<String> {
     let mut h = Md5::new();
     let mut f = BufReader::new(File::open(path)?);
-    let mut buf = [0u8; 1024 * 1024];
+    let mut buf = vec![0u8; 1024 * 1024];
     loop {
         let n = f.read(&mut buf)?;
         if n == 0 {
@@ -131,7 +131,7 @@ pub fn download_asset(rep: &dyn Reporter, asset: &Asset, dest: &Path) -> Result<
     let mut out = BufWriter::new(File::create(&tmp)?);
     let mut done: u64 = 0;
     let mut last_pct = 0u64;
-    let mut buf = [0u8; 1024 * 1024];
+    let mut buf = vec![0u8; 1024 * 1024];
     loop {
         let n = reader
             .read(&mut buf)

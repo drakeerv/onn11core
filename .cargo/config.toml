@@ -1,0 +1,8 @@
+# The Windows main thread only gets the PE default 1 MiB stack. Rust does not
+# raise it for the entry thread, and large per-call buffers overflow it. Keep
+# buffers on the heap, and match the Linux 8 MiB main-thread stack here.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/STACK:8388608"]
+
+[target.x86_64-pc-windows-gnu]
+rustflags = ["-C", "link-arg=-Wl,--stack,8388608"]
